@@ -55,6 +55,39 @@ DSH 的客户端是打包在 `app.asar` 里的，改 core 要连带改 `Electron
 
 > 客户端半的改动刷新页面就会重新加载；宿主半（`lib/index.js`）改了才需要重启。
 
+## 可配置项
+
+全部阈值都能改，两种方式二选一：
+
+**A. cordis.patch.yml**（profile 里那一行加上 config）
+
+```yaml
+- id: dsh-paste-chip
+  config:
+    collapseChars: 600     # 粘贴折叠阈值（字符）
+    collapseLines: 15      # 粘贴折叠阈值（行）
+    previewChars: 500      # 悬停预览多少字
+```
+
+**B. 设置页**（装了 `@deepseek-ai/dsh-settings` 时自动出现「dsh-paste-chip」分区）
+
+| 键 | 默认 | 范围 | 作用 |
+|---|---|---|---|
+| `collapseChars` | 400 | 100–10000 | 粘贴折叠阈值（字符） |
+| `collapseLines` | 12 | 3–200 | 粘贴折叠阈值（行） |
+| `maxChars` | 200000 | 1000–2000000 | 单段正文上限，超过拒绝 |
+| `externalMinChars` | 8 | 1–200 | 外部渠道插入的兜底长度，低于它视为手打 |
+| `warmupMs` | 1200 | 0–10000 | 挂载后预热窗口，期间不接管（防恢复草稿误折叠） |
+| `inputGraceMs` | 500 | 0–3000 | 用户输入后的宽限期 |
+| `previewChars` | 320 | 80–2000 | 悬停浮层预览字数 |
+| `contextChars` | 40 | 0–200 | 悬停浮层上下文各取多少字（0 = 关闭） |
+| `hoverDelayMs` | 180 | 0–1000 | 悬停多久弹出预览 |
+| `leaveGraceMs` | 60 | 0–1000 | 移出后多久收起 |
+| `storeMaxEntries` | 12 | 1–100 | 正文最多存几条，超出淘汰最旧 |
+| `storeMaxBytes` | 2097152 | 64KB–8MB | 正文存储总字节上限 |
+
+实现方式：宿主半把这些值汇总到 `GET /api/dsh-paste-chip/config`，客户端启动时读一次并覆盖默认值；读不到就用同一份默认值，越界一律夹到边界（客户端与宿主各夹一次）。默认值写在 `lib/client.js` 的 `DEFAULT_SETTINGS` 与 `lib/index.js` 的 `DEFAULTS`，两边必须保持一致。
+
 ## 给其他插件用的主动接法（可选）
 
 默认是**被动接法**：任何插件用 `setDraft` / `insertText` 写进草稿的长文本，都会被差异观察器接住，对方不用改一行代码。

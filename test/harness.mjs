@@ -41,8 +41,9 @@ globalThis.window = {
 // fetch 替身：记录每次上报，供断言日志批次
 const posted = []
 globalThis.fetch = (url, init) => {
-  posted.push({ url, body: JSON.parse(init.body) })
-  return Promise.resolve({ ok: true, status: 200 })
+  posted.push({ url, body: init && init.body ? JSON.parse(init.body) : null })
+  // 配置接口返回一份「用户改过」的配置，用来验证客户端会用它覆盖默认值
+  return Promise.resolve({ ok: true, status: 200, json: async () => ({ ok: true, config: { collapseChars: 1200 } }) })
 }
 
 /* 替身 React：effect 排队手动跑，state 记录写入值，ref 直接给对象。 */
@@ -122,8 +123,11 @@ function check(name, fn) {
 /* ------------------------------------------------------------------ *
  * 1. 阈值与计数
  * ------------------------------------------------------------------ */
-const { shouldCollapse, compactCount, collapsePaste, readBody, writeBody, MAX_CHARS, SOURCE,
-  COLLAPSE_CHARS, COLLAPSE_LINES, detectInsertion } = __internals
+const { shouldCollapse, compactCount, collapsePaste, readBody, writeBody, SOURCE, detectInsertion,
+  DEFAULT_SETTINGS, getSettings, normalizeSettings } = __internals
+const MAX_CHARS = DEFAULT_SETTINGS.maxChars
+const COLLAPSE_CHARS = DEFAULT_SETTINGS.collapseChars
+const COLLAPSE_LINES = DEFAULT_SETTINGS.collapseLines
 
 check(`阈值是 ${COLLAPSE_CHARS} 字符 / ${COLLAPSE_LINES} 行`, () => {
   assert.equal(COLLAPSE_CHARS, 400, '阈值应为 400 字')
@@ -328,7 +332,8 @@ check('从草稿差异里认出程序化插入（标注浏览器/划词询问走
 /* ------------------------------------------------------------------ *
  * 3.5 悬停预览：正文前缀与「第 N 个胶囊 → ref」的映射
  * ------------------------------------------------------------------ */
-const { tooltipModel, refAtIndex, TOOLTIP_PREVIEW_CHARS } = __internals
+const { tooltipModel, refAtIndex } = __internals
+const TOOLTIP_PREVIEW_CHARS = DEFAULT_SETTINGS.previewChars
 
 check('短正文不截断，长正文截断并带省略号', () => {
   const short = tooltipModel('一小段', '粘贴文本 · 3 字')
@@ -667,7 +672,7 @@ check('主动 insert 的失败分支都说清原因，且不留孤儿正文', ()
   apply(ctx)
 
   assert.deepEqual(ctx.pasteChip.insert('', { span: { start: 0, end: 0, draftRev: 1 } }), { ok: false, reason: 'empty' })
-  assert.equal(ctx.pasteChip.insert('x'.repeat(__internals.MAX_CHARS + 1), { span: { start: 0, end: 0, draftRev: 1 } }).reason, 'too-long')
+  assert.equal(ctx.pasteChip.insert('x'.repeat(DEFAULT_SETTINGS.maxChars + 1), { span: { start: 0, end: 0, draftRev: 1 } }).reason, 'too-long')
   assert.equal(ctx.pasteChip.insert('abc', {}).reason, 'span-required')
   assert.equal(ctx.pasteChip.insert('abc', { span: { start: 0, end: 0, draftRev: 1 }, sessionId: 'nope' }).reason, 'no-session')
 
@@ -714,7 +719,7 @@ check('replace：原地换正文，ref 不变', () => {
   // 未知 ref / 空正文 / 超长 都要拒绝
   assert.equal(ctx.pasteChip.replace('c-missing', 'x').reason, 'unknown-ref')
   assert.equal(ctx.pasteChip.replace(ref, '').reason, 'empty')
-  assert.equal(ctx.pasteChip.replace(ref, 'x'.repeat(__internals.MAX_CHARS + 1)).reason, 'too-long')
+  assert.equal(ctx.pasteChip.replace(ref, 'x'.repeat(DEFAULT_SETTINGS.maxChars + 1)).reason, 'too-long')
 })
 
 /* ------------------------------------------------------------------ *
@@ -787,6 +792,48 @@ check('serialize 命中与未命中都留痕', async () => {
 /* ------------------------------------------------------------------ *
  * 汇总
  * ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------ *
+ * 5. 配置：默认值 / 夹取 / 从宿主读取
+ * ------------------------------------------------------------------ */
+check('默认配置齐全，且未读宿主前即为默认值', () => {
+  const keys = Object.keys(DEFAULT_SETTINGS)
+  assert.ok(keys.length >= 12, `应至少 12 个可调项，实际 ${keys.length}`)
+  assert.equal(getSettings().collapseChars, 400)
+  assert.equal(getSettings().collapseLines, 12)
+  assert.equal(getSettings().previewChars, 320)
+})
+
+check('normalizeSettings：越界夹到边界，垃圾值忽略', () => {
+  const merged = normalizeSettings({
+    collapseChars: 5,          // 低于下限 100
+    collapseLines: 9999,       // 高于上限 200
+    maxChars: 1000000,
+    previewChars: 'abc',       // 非数字 → 忽略
+    hoverDelayMs: 200.7,       // 取整
+    unknown: 42,               // 未知键 → 丢弃
+  })
+  assert.equal(merged.collapseChars, 100)
+  assert.equal(merged.collapseLines, 200)
+  assert.equal(merged.maxChars, 1000000)
+  assert.equal(merged.previewChars, DEFAULT_SETTINGS.previewChars)
+  assert.equal(merged.hoverDelayMs, 201)
+  assert.equal('unknown' in merged, false)
+  // 非对象输入也要安全
+  assert.deepEqual(normalizeSettings(null), DEFAULT_SETTINGS)
+})
+
+check('loadSettings：从宿主接口覆盖默认值，失败则保持默认', async () => {
+  await __internals.loadSettings()
+  assert.equal(getSettings().collapseChars, 1200, '应使用宿主返回的 1200')
+
+  // 接口挂掉时不能把配置打回 0 或抛错
+  const realFetch = globalThis.fetch
+  globalThis.fetch = () => Promise.reject(new Error('offline'))
+  await __internals.loadSettings()
+  globalThis.fetch = realFetch
+  assert.equal(getSettings().collapseChars, 1200, '失败应保持上一次生效值')
+})
+
 await Promise.all(pendingChecks)
 console.log(results.join('\n'))
 const failed = results.filter(line => line.startsWith('FAIL')).length

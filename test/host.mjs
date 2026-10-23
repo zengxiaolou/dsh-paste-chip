@@ -31,7 +31,7 @@ async function check(name, fn) {
 }
 
 /** 收集注册的路由，供测试直接调用 handler。 */
-function mount() {
+function mount(config) {
   const routes = new Map()
   const effects = []
   const logs = []
@@ -46,7 +46,7 @@ function mount() {
       },
     },
   }
-  apply(ctx)
+  apply(ctx, config)
   return { routes, logs, effects }
 }
 
@@ -152,6 +152,35 @@ await check('超限轮转：文件超过 4MB 时轮转一份 .1', async () => {
   assert.ok(existsSync(`${logFile}.1`), '应产生轮转文件')
   const lines = readFileSync(logFile, 'utf8').trim().split('\n').map(line => JSON.parse(line))
   assert.ok(lines.some(line => line.ev === 'after.rotate'), '轮转后仍要能写入')
+})
+
+await check('配置接口：GET 返回完整配置，POST 被拒', async () => {
+  const { routes } = mount()
+  const handler = routes.get('/api/dsh-paste-chip/config')
+  assert.ok(typeof handler === 'function', '应注册配置路由')
+
+  const res = fakeResponse()
+  await handler(fakeRequest('GET'), res)
+  assert.equal(res.out.status, 200)
+  const body = JSON.parse(res.out.body)
+  assert.equal(body.config.collapseChars, 400)
+  assert.equal(body.config.collapseLines, 12)
+  assert.equal(body.config.maxChars, 200000)
+
+  const rejected = fakeResponse()
+  await handler(fakeRequest('POST', '{}'), rejected)
+  assert.equal(rejected.out.status, 405)
+})
+
+await check('apply 收到的 config 会被夹取到合法范围', async () => {
+  const { routes } = mount({ collapseChars: 999999, collapseLines: 1, maxChars: 500, hoverDelayMs: 300 })
+  const res = fakeResponse()
+  await routes.get('/api/dsh-paste-chip/config')(fakeRequest('GET'), res)
+  const cfg = JSON.parse(res.out.body).config
+  assert.equal(cfg.collapseChars, 10000, '上限夹取')
+  assert.equal(cfg.collapseLines, 3, '下限夹取')
+  assert.equal(cfg.maxChars, 1000, '下限夹取')
+  assert.equal(cfg.hoverDelayMs, 300, '合法值原样保留')
 })
 
 console.log(results.join('\n'))
