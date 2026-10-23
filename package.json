@@ -1,0 +1,50 @@
+{
+  "name": "dsh-paste-chip",
+  "version": "0.1.16",
+  "description": "DSH 插件：长文本粘贴自动折叠成可展开的胶囊，悬停看正文与上下文，发送时按原位展开；也接管其他插件写入的长文本。",
+  "type": "module",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-input-trigger"
+      ]
+    }
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node test/harness.mjs && node test/host.mjs"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "paste",
+    "composer",
+    "ux",
+    "clipboard"
+  ],
+  "license": "MIT",
+  "author": "ruler",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zengxiaolou/dsh-paste-chip.git"
+  },
+  "homepage": "https://github.com/zengxiaolou/dsh-paste-chip#readme",
+  "bugs": {
+    "url": "https://github.com/zengxiaolou/dsh-paste-chip/issues"
+  }
+}

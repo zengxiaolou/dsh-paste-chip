@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>dsh-paste-chip · 胶囊外观对照（现状 vs 建议）</title>
+<style>
+  /* ---------- 以下为 DSH 暗色主题 token 的真实取值（取自 ui-theme/design-platform.css） ---------- */
+  :root {
+    --bg-base: rgb(21, 21, 23);        /* --dsw-alias-bg-base (dark)            */
+    --card: rgb(44, 44, 46);           /* --dsw-specific-input-major (dark)    */
+    --label-primary: rgb(249, 250, 251);
+    --label-secondary: rgb(207, 211, 214);
+    --label-tertiary: rgb(173, 178, 184);
+    --business: rgb(122, 170, 255);    /* --dsw-alias-state-business-primary   */
+    --business-tertiary: rgb(52, 65, 91);
+    --border-l2: rgba(255, 255, 255, 0.12);
+    --radius-xs: 4px; --radius-sm: 8px; --radius-md: 12px; --radius-panel: 28px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px;
+    background: var(--bg-base);
+    color: var(--label-primary);
+    font: 14px/24px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 { font-size: 18px; line-height: 26px; margin: 0 0 4px; font-weight: 600; }
+  h2 { font-size: 13px; line-height: 20px; margin: 28px 0 8px; font-weight: 600; color: var(--label-secondary); }
+  .hint { margin: 0 0 8px; font-size: 12px; line-height: 18px; color: var(--label-tertiary); }
+  .hint code { color: var(--business); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+  /* ---------- 复刻 core 输入卡片（InputBar.module.css） ---------- */
+  .card {
+    position: relative;                 /* overlay anchor 的定位上下文 */
+    display: flex; flex-direction: column; gap: 12px;
+    width: 100%; max-width: 720px;
+    padding-top: 8px;
+    border-radius: var(--radius-panel);
+    background: var(--card);
+    box-shadow: 0 0 0 0.5px var(--border-l2), 0 4px 16px rgba(0, 0, 0, 0.03);
+    font-size: 14px; line-height: 24px;
+  }
+  .card__scroll { max-height: 240px; overflow-y: auto; margin-right: 4px; }
+  .card__input { min-height: 36px; padding: 4px 8px 0 14px; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; }
+  .card__row { display: flex; gap: 8px; align-items: center; padding: 2px 8px 6px; }
+  .card__btn { margin-left: auto; padding: 5px 14px; border-radius: 999px; background: var(--label-primary); color: #1b1b1c; font-size: 13px; line-height: 18px; font-weight: 500; }
+  .card__overlay-anchor { position: absolute; inset: 0 0 auto; height: 0; }
+
+  /* ---------- core 渲染的胶囊内层：CSS 逐条照抄 ----------
+     ReferenceChip.module.css / composer-editor.module.css               */
+  .reference {
+    padding: 0 4px;
+    border-radius: var(--radius-sm);
+    line-height: inherit;
+    vertical-align: baseline;
+    color: var(--business);
+    background: transparent;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+  .reference:hover { background: var(--business-tertiary); }
+  .openable { cursor: pointer; }
+  .chip { display: inline-flex; align-items: baseline; gap: 3px; max-width: 240px; color: var(--business); user-select: none; }
+  .chip .icon { flex: none; align-self: center; }
+  .chip .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ---------- A：插件当前注入的 CSS（原文照抄） ---------- */
+  .variant-a [data-composer-chip="paste-chip"] {
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border-radius: 7px;
+    box-shadow: 0 0 0 1px rgba(122, 162, 255, 0.30), 0 1px 2px rgba(0, 0, 0, 0.28);
+    transition: box-shadow 120ms ease;
+  }
+  .variant-a [data-composer-chip="paste-chip"]:hover,
+  .variant-a.force-hover [data-composer-chip="paste-chip"] {
+    box-shadow: 0 0 0 1px rgba(122, 162, 255, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+  }
+  .variant-a.force-hover .reference { background: var(--business-tertiary); }
+
+  /* ---------- B：建议 CSS ---------- */
+  .variant-b [data-composer-chip="paste-chip"] {
+    display: inline-block;              /* 关键：让外盒真正包住 24px 的 core 子元素 */
+    max-width: 100%;                    /* 收窄交给内部 .label，外盒不再抢约束 */
+    vertical-align: baseline;
+    border-radius: var(--radius-sm);
+    background-color: rgba(122, 170, 255, 0.11);           /* 兜底 */
+    background-color: color-mix(in srgb, var(--business) 11%, transparent);
+    box-shadow:
+      0 0 0 1px rgba(122, 170, 255, 0.26),                 /* 兜底 */
+      0 1px 2px rgba(0, 0, 0, 0.22);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--business) 26%, transparent),
+      0 1px 2px rgba(0, 0, 0, 0.22);
+    transition: background-color 120ms ease-out, box-shadow 120ms ease-out;
+  }
+  .variant-b [data-composer-chip="paste-chip"]:hover,
+  .variant-b.force-hover [data-composer-chip="paste-chip"] {
+    background-color: color-mix(in srgb, var(--business) 17%, transparent);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--business) 44%, transparent),
+      0 2px 6px rgba(0, 0, 0, 0.28);
+  }
+  .variant-b.force-hover .reference { background: transparent; } /* 演示用：压掉 core 自带 hover，单看外层效果 */
+
+  /* ---------- 浮层（插件自有 DOM） ---------- */
+  .tip-stage { position: relative; height: 168px; }
+  .tip {
+    position: absolute; width: 460px; max-height: 320px; overflow: hidden;
+    padding: 12px 14px; border-radius: var(--radius-md);
+    color: #e6e8ee; font-size: 12px; line-height: 18px;
+  }
+  .tip--now {
+    background: linear-gradient(180deg, rgba(26, 29, 38, 0.985), rgba(17, 19, 26, 0.985));
+    border: 1px solid rgba(140, 170, 255, 0.20);
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.52), 0 0 0 1px rgba(0, 0, 0, 0.35);
+  }
+  .tip--next {
+    left: 490px;
+    background: color-mix(in srgb, var(--card) 96%, var(--business));
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45), 0 0 0 0.5px rgba(0, 0, 0, 0.5);
+  }
+  .tip__head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .tip__dot { width: 2px; height: 12px; border-radius: 1px; background: var(--business); flex: none; }
+  .tip__title { color: #9db8ff; font-weight: 600; }
+  .tip--next .tip__title { color: var(--label-primary); }
+  .tip__badge { margin-left: auto; color: var(--label-secondary); font-size: 11px; padding: 1px 7px; border-radius: 999px; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.08); }
+  .tip__body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.62; color: rgba(233, 236, 242, 0.93); white-space: pre-wrap; word-break: break-word; max-height: 88px; overflow: hidden; }
+  .tip--next .tip__body { color: var(--label-secondary); }
+  .tip__foot { margin-top: 8px; font-size: 11px; color: rgba(230, 232, 238, 0.45); }
+
+  /* ---------- 提示条 ---------- */
+  .notice-now { position: relative; z-index: 2; margin: 0; padding: 7px 11px; border-radius: 9px; font-size: 12px; line-height: 18px; color: #f2c14e; background: linear-gradient(180deg, rgba(210, 153, 34, 0.14), rgba(210, 153, 34, 0.07)); border: 1px solid rgba(210, 153, 34, 0.32); border-left: 3px solid rgba(242, 193, 78, 0.85); }
+  .notice-next { padding: 8px 12px; border-radius: var(--radius-sm); font-size: 12px; line-height: 18px; color: #f5d08a; background: rgba(210, 153, 34, 0.13); border: 1px solid rgba(210, 153, 34, 0.28); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35); display: flex; gap: 8px; align-items: flex-start; }
+  .notice-next b { color: #ffd98a; font-weight: 600; }
+  .notice-next .ico { flex: none; margin-top: 1px; }
+
+  .metrics { margin-top: 10px; padding: 10px 12px; border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; line-height: 17px; color: var(--label-secondary); white-space: pre; }
+  .tag { display: inline-block; padding: 0 6px; border-radius: 4px; font-size: 11px; line-height: 18px; background: rgba(255, 255, 255, 0.07); color: var(--label-secondary); }
+</style>
+</head>
+<body>
+
+<h1>长文本胶囊 · 外观对照</h1>
+<p class="hint">外层 <code>span[data-composer-chip="paste-chip"]</code> 以内是 core 渲染的 DOM，插件只能改外层与浮层。以下所有颜色取自 DSH 暗色 token 真实色值。</p>
+
+<h2>A · 现状（当前注入的 CSS）</h2>
+<p class="hint">外盒是 inline：<code>max-width / overflow / text-overflow / white-space</code> 对非替换行内盒<b>不生效</b>，真正的截断来自 core 的 <code>.label</code>。</p>
+<div class="variant-a">
+  <div class="card">
+    <div class="card__scroll"><div class="card__input">这段话前面有正文，<span data-composer-chip="paste-chip" data-measure="a-normal"><span class="reference chip openable" title="粘贴文本 · 12.1k 字"><svg class="icon" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M9.5 3.5 5 8a2.1 2.1 0 0 0 3 3l4.8-4.8a3.2 3.2 0 0 0-4.5-4.5L3.4 6.5a4.3 4.3 0 0 0 6 6l4.2-4.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span class="label">粘贴文本 · 12.1k 字</span></span></span><span class="tail" data-tail="a-normal">后面继续写，看光标与行高有没有被顶开。</span></div></div>
+    <div class="card__row"><span class="tag">Enter 发送</span><span class="card__btn">发送</span></div>
+  </div>
+</div>
+
+<h2>A · 悬停态（core 自带 tint + 插件光环）</h2>
+<div class="variant-a force-hover">
+  <div class="card">
+    <div class="card__scroll"><div class="card__input">这段话前面有正文，<span data-composer-chip="paste-chip"><span class="reference chip openable" title="粘贴文本 · 12.1k 字"><svg class="icon" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M9.5 3.5 5 8a2.1 2.1 0 0 0 3 3l4.8-4.8a3.2 3.2 0 0 0-4.5-4.5L3.4 6.5a4.3 4.3 0 0 0 6 6l4.2-4.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span class="label">粘贴文本 · 12.1k 字</span></span></span><span class="tail" data-tail="a-hover">后面继续写，看光标与行高有没有被顶开。</span></div></div>
+    <div class="card__row"><span class="tag">Enter 发送</span><span class="card__btn">发送</span></div>
+  </div>
+</div>
+
+<h2>B · 建议（inline-block 实心胶囊）</h2>
+<p class="hint">切到 <code>inline-block</code> 后外盒高度等于 core 子元素的 24px，描边与填充才真正包住胶囊；行内基线保持不变。</p>
+<div class="variant-b">
+  <div class="card">
+    <div class="card__scroll"><div class="card__input">这段话前面有正文，<span data-composer-chip="paste-chip" data-measure="b-normal"><span class="reference chip openable" title="粘贴文本 · 12.1k 字"><svg class="icon" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M9.5 3.5 5 8a2.1 2.1 0 0 0 3 3l4.8-4.8a3.2 3.2 0 0 0-4.5-4.5L3.4 6.5a4.3 4.3 0 0 0 6 6l4.2-4.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span class="label">粘贴文本 · 12.1k 字</span></span></span><span class="tail" data-tail="b-normal">后面继续写，看光标与行高有没有被顶开。</span></div></div>
+    <div class="card__row"><span class="tag">Enter 发送</span><span class="card__btn">发送</span></div>
+  </div>
+</div>
+
+<h2>B · 悬停态（填充加深 + 描边提亮）</h2>
+<div class="variant-b force-hover">
+  <div class="card">
+    <div class="card__scroll"><div class="card__input">这段话前面有正文，<span data-composer-chip="paste-chip"><span class="reference chip openable" title="粘贴文本 · 12.1k 字"><svg class="icon" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M9.5 3.5 5 8a2.1 2.1 0 0 0 3 3l4.8-4.8a3.2 3.2 0 0 0-4.5-4.5L3.4 6.5a4.3 4.3 0 0 0 6 6l4.2-4.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span class="label">粘贴文本 · 12.1k 字</span></span></span><span class="tail" data-tail="b-hover">后面继续写，看光标与行高有没有被顶开。</span></div></div>
+    <div class="card__row"><span class="tag">Enter 发送</span><span class="card__btn">发送</span></div>
+  </div>
+</div>
+
+<h2>悬停浮层：左=现状，右=建议</h2>
+<div class="tip-stage">
+  <div class="tip tip--now">
+    <div class="tip__head"><span class="tip__dot"></span><span class="tip__title">粘贴文本 · 12.1k 字</span><span class="tip__badge">12108 字</span></div>
+    <div class="tip__body">这是一段很长的粘贴内容开头，用来确认粘进来的到底是什么。自动生成的标题、重复的页脚、误复制的整段代码，都会在头两行暴露出来……</div>
+    <div class="tip__foot">仅预览前 320 字 · 发送时展开全文</div>
+  </div>
+  <div class="tip tip--next">
+    <div class="tip__head"><span class="tip__dot"></span><span class="tip__title">粘贴文本 · 12.1k 字</span><span class="tip__badge">12108 字</span></div>
+    <div class="tip__body">这是一段很长的粘贴内容开头，用来确认粘进来的到底是什么。自动生成的标题、重复的页脚、误复制的整段代码，都会在头两行暴露出来……</div>
+    <div class="tip__foot">仅预览前 320 字 · 发送时展开全文</div>
+  </div>
+</div>
+
+<h2>提示条：上=现状（叠加在草稿首行），下=建议（absolute bottom:100% 浮在卡片上方，零布局位移）</h2>
+<p class="hint">挂载槽位是 <code>conversation.input.overlay</code>，其容器 <code>.overlayAnchor</code> 是 <code>position:absolute; height:0</code>，普通流子元素会压在第一行文字上。</p>
+<div class="card" style="max-width:720px">
+  <div class="card__overlay-anchor"><div class="notice-now">粘贴内容 240k 字，超过输入框上限（200k 字）；请改为作为文件附加上传</div></div>
+  <div class="card__input" style="color:var(--label-secondary)">这段话前面有正文，后面继续写——第一行会被上面那条提示压住。</div>
+  <div class="card__row"><span class="card__btn">发送</span></div>
+</div>
+<div style="height:26px"></div>
+<div class="card" style="max-width:720px">
+  <div class="card__overlay-anchor">
+    <div class="notice-next" style="position:absolute; bottom:100%; left:0; right:0; margin-bottom:6px; z-index:2">
+      <svg class="ico" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" style="color:#f2c14e"><path d="M8 2.5 14.5 13.5h-13L8 2.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M8 6.5v3.2M8 11.6v.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      <span><b>粘贴内容 240k 字</b>，超过输入框上限（200k 字）。请改为作为文件附加上传。</span>
+    </div>
+  </div>
+  <div class="card__input" style="color:var(--label-secondary); min-height:64px">这段话前面有正文，后面继续写——提示浮在卡片上方，不再压住这一行。</div>
+  <div class="card__row"><span class="card__btn">发送</span></div>
+</div>
+
+<h2>实测盒模型</h2>
+<div class="metrics" id="metrics">measuring…</div>
+
+<script>
+  const rect = (el) => el.getBoundingClientRect();
+  const r2 = (n) => Math.round(n * 100) / 100;
+  const lines = [];
+  for (const key of ["a-normal", "b-normal"]) {
+    const outer = document.querySelector(`[data-measure="${key}"]`);
+    const inner = outer.querySelector(".reference");
+    const o = rect(outer), i = rect(inner), p = rect(outer.closest(".card__input"));
+    lines.push(
+      `${key.padEnd(9)} 外盒 h=${r2(o.height)}px  w=${r2(o.width)}px   |   core 子元素 h=${r2(i.height)}px  w=${r2(i.width)}px   |   段落行高 h=${r2(p.height)}px`,
+    );
+  }
+  // 基线校验：胶囊后紧跟文字的「行内盒」相对段落顶部的偏移，A/B 必须相等
+  for (const key of ["a-normal", "b-normal"]) {
+    const chip = document.querySelector(`[data-measure="${key}"], .variant-${key[0]} [data-composer-chip]`);
+    const tail = document.querySelector(`[data-tail="${key}"]`);
+    const box = chip.closest(".card__input");
+    const rel = (el) => r2(rect(el).top - rect(box).top);
+    lines.push(`  ${key}  baseline-check: 尾部文字 top=${rel(tail)}px  胶囊 top=${rel(chip)}px  bottom=${r2(rect(chip).bottom - rect(box).top)}px  尾部文字 bottom=${r2(rect(tail).bottom - rect(box).top)}px`);
+  }
+  lines.push("");
+  const cs = getComputedStyle(document.querySelector('[data-measure="a-normal"]'));
+  const csb = getComputedStyle(document.querySelector('[data-measure="b-normal"]'));
+  lines.push("");
+  lines.push(`A 外盒 display=${cs.display}  overflow=${cs.overflow}  max-width=${cs.maxWidth}  →  overflow/max-width 对行内盒无效`);
+  lines.push(`B 外盒 display=${csb.display}  vertical-align=${csb.verticalAlign}  border-radius=${csb.borderRadius}`);
+
+  // ---------- 对比度实测：把 color-mix 的 alpha 合成到卡片底色上再算 WCAG ----------
+  const parse = (str) => {
+    const nums = str.match(/[\d.]+/g).map(Number);
+    if (str.startsWith("color(")) { // color(srgb r g b / a) → 0..255
+      return { r: nums[0] * 255, g: nums[1] * 255, b: nums[2] * 255, a: nums[3] === undefined ? 1 : nums[3] };
+    }
+    return { r: nums[0], g: nums[1], b: nums[2], a: nums[3] === undefined ? 1 : nums[3] };
+  };
+  const over = (fg, bg) => ({
+    r: fg.r * fg.a + bg.r * (1 - fg.a),
+    g: fg.g * fg.a + bg.g * (1 - fg.a),
+    b: fg.b * fg.a + bg.b * (1 - fg.a),
+  });
+  const lum = (c) => {
+    const ch = (v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); };
+    return 0.2126 * ch(c.r) + 0.7152 * ch(c.g) + 0.0722 * ch(c.b);
+  };
+  const ratio = (a, b) => { const l1 = lum(a), l2 = lum(b); const hi = Math.max(l1, l2), lo = Math.min(l1, l2); return (hi + 0.05) / (lo + 0.05); };
+
+  const card = parse(getComputedStyle(document.querySelector(".variant-b .card")).backgroundColor);
+  const labelEl = document.querySelector('[data-measure="b-normal"] .label');
+  const labelColor = parse(getComputedStyle(labelEl).color);
+  const aFill = parse(getComputedStyle(document.querySelector('[data-measure="a-normal"]')).backgroundColor);
+  const bFill = parse(getComputedStyle(document.querySelector('[data-measure="b-normal"]')).backgroundColor);
+  const bPill = over(bFill, card);
+  const hex = (c) => "#" + [c.r, c.g, c.b].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
+  lines.push("");
+  lines.push(`卡片底色 ${hex(card)}  |  胶囊文字 ${hex(labelColor)}`);
+  lines.push(`文字 / 卡片底        ${ratio(labelColor, card).toFixed(2)}:1   （WCAG AA 正文需 ≥ 4.5）`);
+  lines.push(`文字 / B 胶囊填充底  ${ratio(labelColor, bPill).toFixed(2)}:1   填充合成色 ${hex(bPill)}  alpha=${bFill.a}`);
+  lines.push(`B 填充 / 卡片底      ${ratio(bPill, card).toFixed(2)}:1   胶囊与底色的可分辨度`);
+  lines.push(`A 外盒 background    ${hex(aFill)} alpha=${aFill.a}  （现状无填充）`);
+  document.getElementById("metrics").textContent = lines.join("\n");
+</script>
+</body>
+</html>
