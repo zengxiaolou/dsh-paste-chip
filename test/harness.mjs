@@ -517,6 +517,52 @@ check('用户自己打字不会被折叠（beforeinput 宽限期）', () => {
   assert.ok(skip !== undefined, '应记录跳过的原因')
 })
 
+check('回归：胶囊标签本身不会被再折叠一次（否则发送时只发出标签）', () => {
+  const bailCalls = []
+  const actions = { captureInsertion: () => ({ start: 0, end: 0, draftRev: 1 }), insertText: () => {} }
+  const actx = { bail: (...args) => { bailCalls.push(args); return true } }
+  const ctx = makePluginContext()
+  ctx.sessions = { scope: () => actx }
+  apply(ctx)
+
+  const realNow = Date.now
+  let clock = 13_000_000
+  Date.now = () => clock
+  try {
+    // 1) 先渲染一次，让插件记住该会话的输入状态（append 需要它算插入点）
+    resetHooks({ clear: true })
+    renderHost({
+      inputActions: actions, pasteChipActx: actx,
+      useInput: selector => selector({ sessionId: 's1', draft: '', occurrences: [], draftRev: 1 }),
+    })
+
+    // 2) 粘贴路径：1k 字折叠成胶囊（标签被登记）
+    clock += 5000
+    const body = 'PR seafintec 的评审说明'.repeat(60)
+    const result = ctx.pasteChip.append(body, { sessionId: 's1' })
+    assert.equal(result.ok, true, 'append 应当成功')
+    const label = result.label
+
+    // 3) 系统把标签插进草稿：看起来就像「外部插入了一段文本」
+    bailCalls.length = 0
+    renderHost({
+      inputActions: actions, pasteChipActx: actx,
+      useInput: selector => selector({
+        sessionId: 's1', draft: label,
+        occurrences: [{ source: SOURCE, ref: result.ref, offset: 0, length: label.length }],
+        draftRev: 2,
+      }),
+    })
+  } finally {
+    Date.now = realNow
+  }
+
+  assert.equal(bailCalls.length, 0, '标签本身不能再被折叠成新胶囊')
+  const skip = __internals.pendingLogs().filter(entry => entry.ev === 'insertion.skip' && entry.data.reason === 'own-label').at(-1)
+  assert.ok(skip !== undefined, '应记录 own-label 跳过原因')
+})
+
+
 check('预热窗口内的变化不接管（会话切换恢复草稿）', () => {
   const bailCalls = []
   const actions = { captureInsertion: () => ({ start: 0, end: 0, draftRev: 1 }), insertText: () => {} }
