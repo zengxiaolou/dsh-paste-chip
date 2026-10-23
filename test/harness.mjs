@@ -838,6 +838,26 @@ check('serialize 命中与未命中都留痕', async () => {
 /* ------------------------------------------------------------------ *
  * 汇总
  * ------------------------------------------------------------------ */
+check('第二层防线：正文若只是标签（嵌套遗留），宁可拦住发送', async () => {
+  const sources = []
+  const ctx = makePluginContext({ sources })
+  apply(ctx)
+  const source = sources.at(-1)
+
+  // 造一个「正文=标签」的历史条目，模拟旧版本嵌套留下的胶囊
+  const label = __internals.chipLabel('原来的一段长文本')
+  const ref = writeBody(label)
+
+  let rejected = null
+  try {
+    await source.codec.serialize(ref)
+  } catch (error) {
+    rejected = error
+  }
+  assert.ok(rejected !== null, '不能把标签当正文发出去')
+  assert.match(rejected.message, /重新粘贴/, '要告诉用户怎么办')
+})
+
 /* ------------------------------------------------------------------ *
  * 5. 配置：默认值 / 夹取 / 从宿主读取
  * ------------------------------------------------------------------ */
