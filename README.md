@@ -1,5 +1,8 @@
 # dsh-paste-chip
 
+![dsh-paste-chip](https://raw.githubusercontent.com/zengxiaolou/dsh-paste-chip/main/docs/images/promo.png)
+
+
 把超长粘贴折叠成一张可展开的引用胶囊，避免长草稿把输入框拖死。
 
 - 粘贴阈值：**≥400 字符** 或 **≥12 行** 折叠成一张胶囊
