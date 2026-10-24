@@ -563,6 +563,53 @@ check('回归：胶囊标签本身不会被再折叠一次（否则发送时只�
 })
 
 
+check('@ 提及 / 斜杠命令这类 token 不能被折叠（会破坏别的插件的艾特）', () => {
+  const bailCalls = []
+  const actions = { captureInsertion: () => ({ start: 0, end: 0, draftRev: 1 }), insertText: () => {} }
+  const actx = { bail: (...args) => { bailCalls.push(args); return true } }
+
+  const realNow = Date.now
+  let clock = 14_000_000
+  Date.now = () => clock
+  try {
+    resetHooks({ clear: true })
+    renderHost({ inputActions: actions, pasteChipActx: actx, useInput: selector => selector({ draft: '', occurrences: [], draftRev: 1 }) })
+    clock += 5000
+    // 别的插件插入 @ 提及（13 字，超过 8 字兜底线，但它是 token 不是长文本）
+    renderHost({ inputActions: actions, pasteChipActx: actx, useInput: selector => selector({ draft: '@品牌视觉设计师', occurrences: [], draftRev: 2 }) })
+    clock += 5000
+    // 斜杠命令同理
+    renderHost({ inputActions: actions, pasteChipActx: actx, useInput: selector => selector({ draft: '@品牌视觉设计师 /fixture-demo', occurrences: [], draftRev: 3 }) })
+  } finally {
+    Date.now = realNow
+  }
+  assert.equal(bailCalls.length, 0, '@ 提及与斜杠命令都不能被折叠')
+  const skip = __internals.pendingLogs().filter(entry => entry.ev === 'insertion.skip' && entry.data.reason === 'trigger-token').at(-1)
+  assert.ok(skip !== undefined, '应记录 trigger-token 跳过原因')
+})
+
+check('浮层定位：优先贴编辑器上沿，不压输入框；空间不够才翻转', () => {
+  const { placeTooltip } = __internals
+  const viewport = { width: 1200, height: 800 }
+  const self = { width: 520, height: 300 }
+
+  // 上方空间充足：贴编辑器上沿之上
+  const above = placeTooltip({ top: 500, bottom: 620, left: 100 }, self, viewport)
+  assert.equal(above.top, 500 - 300 - 8)
+
+  // 上方不够：翻到编辑器下方
+  const below = placeTooltip({ top: 120, bottom: 240, left: 100 }, self, viewport)
+  assert.equal(below.top, 240 + 8)
+
+  // 下方也放不下：夹在视口内，绝不溢出
+  const clamped = placeTooltip({ top: 700, bottom: 780, left: 100 }, self, viewport)
+  assert.ok(clamped.top >= 8 && clamped.top + self.height <= viewport.height, `越界: ${JSON.stringify(clamped)}`)
+
+  // 右侧溢出：往左收
+  const right = placeTooltip({ top: 500, bottom: 620, left: 1100 }, self, viewport)
+  assert.ok(right.left + self.width <= viewport.width - 8, '不能超出右边界')
+})
+
 check('预热窗口内的变化不接管（会话切换恢复草稿）', () => {
   const bailCalls = []
   const actions = { captureInsertion: () => ({ start: 0, end: 0, draftRev: 1 }), insertText: () => {} }
