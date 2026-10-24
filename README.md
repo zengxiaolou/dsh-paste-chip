@@ -19,7 +19,7 @@
 - 胶囊显示 `粘贴「会议纪要：本周三…」· 1.2k 字`（英文 `Pasted「…」· 1.2k chars`）——带正文前缀，两个同字数的胶囊也能分辨；整块删除、整块撤销
 - 发送时展开回完整正文；正文找不到就**明确拦住发送**，绝不把标签当正文发出去
 
-![胶囊与浮层](docs/chip-preview.png)
+![胶囊与浮层](https://raw.githubusercontent.com/zengxiaolou/dsh-paste-chip/main/docs/chip-preview.png)
 
 ## 为什么需要它
 
