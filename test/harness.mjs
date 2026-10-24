@@ -588,6 +588,38 @@ check('@ 提及 / 斜杠命令这类 token 不能被折叠（会破坏别的插�
   assert.ok(skip !== undefined, '应记录 trigger-token 跳过原因')
 })
 
+check('插入区间压到已有胶囊时拒绝换算（否则会吃掉胶囊）', () => {
+  const bailCalls = []
+  const actions = { captureInsertion: () => ({ start: 0, end: 0, draftRev: 1 }), insertText: () => {} }
+  const actx = { bail: (...args) => { bailCalls.push(args); return true } }
+
+  // 复刻日志里的真实形状：一次变化里「胶囊 + 外部文本」同时出现，
+  // 差异算法会把整段（含胶囊标签）当成插入，换算坐标就会压到胶囊上。
+  const label = __internals.chipLabel('旧内容')
+  const realNow = Date.now
+  let clock = 15_000_000
+  Date.now = () => clock
+  try {
+    resetHooks({ clear: true })
+    renderHost({ inputActions: actions, pasteChipActx: actx, useInput: selector => selector({ draft: '', occurrences: [], draftRev: 1 }) })
+    clock += 5000
+    renderHost({
+      inputActions: actions, pasteChipActx: actx,
+      useInput: selector => selector({
+        draft: '外'.repeat(50) + label + '外'.repeat(50),
+        occurrences: [{ source: SOURCE, ref: 'r1', offset: 50, length: label.length }],
+        draftRev: 2,
+      }),
+    })
+  } finally {
+    Date.now = realNow
+  }
+  assert.equal(bailCalls.length, 0, '压到胶囊的区间绝不能替换')
+  const skip = __internals.pendingLogs().filter(entry => entry.ev === 'insertion.skip' && entry.data.reason === 'overlaps-chip').at(-1)
+  assert.ok(skip !== undefined, '应记录 overlaps-chip 跳过原因')
+})
+
+
 check('浮层定位：优先贴编辑器上沿，不压输入框；空间不够才翻转', () => {
   const { placeTooltip } = __internals
   const viewport = { width: 1200, height: 800 }
