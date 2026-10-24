@@ -2,6 +2,14 @@
 
 ![dsh-paste-chip](https://raw.githubusercontent.com/zengxiaolou/dsh-paste-chip/main/docs/images/promo.png)
 
+<p>
+<a href="https://www.npmjs.com/package/dsh-paste-chip"><img alt="npm" src="https://img.shields.io/npm/v/dsh-paste-chip?color=2f81f7&label=npm"></a>
+<a href="https://www.npmjs.com/package/dsh-paste-chip"><img alt="downloads" src="https://img.shields.io/npm/dw/dsh-paste-chip?color=3fb950"></a>
+<a href="https://github.com/zengxiaolou/dsh-paste-chip/blob/main/LICENSE"><img alt="license" src="https://img.shields.io/npm/l/dsh-paste-chip?color=bf8700"></a>
+<img alt="dsh plugin" src="https://img.shields.io/badge/DSH-plugin-7aa2ff">
+<a href="https://github.com/zengxiaolou/dsh-paste-chip/stargazers"><img alt="stars" src="https://img.shields.io/github/stars/zengxiaolou/dsh-paste-chip?color=8250df"></a>
+</p>
+
 
 把超长粘贴折叠成一张可展开的引用胶囊，避免长草稿把输入框拖死。
 
