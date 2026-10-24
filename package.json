@@ -35,13 +35,14 @@
     "paste",
     "composer",
     "ux",
-    "clipboard"
+    "clipboard",
+    "dsh"
   ],
   "license": "MIT",
   "author": "ruler",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/zengxiaolou/dsh-paste-chip.git"
+    "url": "https://github.com/zengxiaolou/dsh-paste-chip"
   },
   "homepage": "https://github.com/zengxiaolou/dsh-paste-chip#readme",
   "bugs": {
