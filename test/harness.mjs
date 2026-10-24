@@ -22,9 +22,25 @@ globalThis.localStorage = {
 }
 Object.defineProperty(globalThis, 'navigator', { value: { language: 'zh-CN' }, configurable: true })
 
+/** 最小 DOM 元素替身：够跑常驻卡片的建树与按钮点击。 */
+function makeElement(tag) {
+  const el = {
+    tagName: String(tag).toUpperCase(),
+    style: {}, children: [], textContent: '', title: '', parentNode: null, handlers: {},
+    appendChild(child) { this.children.push(child); child.parentNode = this; return child },
+    setAttribute(name, value) { this[name] = value },
+    addEventListener(type, fn) { this.handlers[type] = fn },
+    contains(node) { return node === this || this.children.some(child => child === node) },
+    getBoundingClientRect() { return { top: 100, left: 100, width: 320, height: 160, bottom: 260, right: 420 } },
+    dispatch(type, event) { const fn = this.handlers[type]; if (typeof fn === 'function') fn(event) },
+  }
+  return el
+}
 const listeners = new Map()
 const fakeEditor = { contains: () => true }
 globalThis.document = {
+  body: makeElement('body'),
+  createElement: makeElement,
   addEventListener: (type, fn) => { listeners.set(type, fn) },
   removeEventListener: (type) => { listeners.delete(type) },
   querySelector: selector => (selector.includes('data-lexical-editor') ? fakeEditor : null),
@@ -725,6 +741,86 @@ check('点击胶囊：openReference 能接管并打开常驻预览', () => {
 
   // 正文没了就别抢点击：返回 false，留给后续默认行为
   assert.equal(source.openReference({}, { ref: 'c-missing' }), false)
+})
+
+/** 在常驻卡片里按文本找按钮（替身 DOM 不做 textContent 清空，取最后一个命中的）。 */
+function findButtonInTooltip(label) {
+  const box = globalThis.document.body.children.at(-1)
+  const matches = []
+  const walk = node => {
+    if (node.textContent === label) matches.push(node)
+    for (const child of node.children) walk(child)
+  }
+  if (box !== undefined) walk(box)
+  return matches.at(-1)
+}
+
+
+check('常驻卡片带 ✕：点它就是「关闭」，会广播 reason=close', () => {
+  const sources = []
+  const slots = []
+  const ctx = makePluginContext({ sources, slots })
+  apply(ctx)
+  const events = []
+  ctx.pasteChip.watchPreview(event => events.push(event))
+
+  const body = '带关闭按钮的正文'
+  const ref = writeBody(body)
+  assert.equal(__internals.pinPreview(ref, body), true)
+
+  const close = findButtonInTooltip('✕')
+  assert.ok(close !== undefined, '常驻卡片必须有 ✕ 关闭按钮')
+  assert.equal(close.title, '关闭', '关闭按钮要有 title（harness 的 navigator 是中文）')
+
+  let stopped = false
+  close.dispatch('click', { stopPropagation() { stopped = true } })
+  assert.equal(stopped, true, '点 ✕ 不应把事件冒泡给外部关闭手势')
+  assert.deepEqual(events.at(-1), { phase: 'unpin', ref, reason: 'close' })
+})
+
+check('预览开关会广播 pin/unpin，并区分关闭方式', () => {
+  const sources = []
+  const slots = []
+  const ctx = makePluginContext({ sources, slots })
+  apply(ctx)
+
+  const events = []
+  const off = ctx.pasteChip.watchPreview(event => events.push(event))
+
+  const body = '预览联动'.repeat(20)
+  const ref = writeBody(body)
+  const otherBody = '另一段正文'
+  const other = writeBody(otherBody)
+
+  assert.equal(__internals.pinPreview(ref, body), true, '打开常驻预览')
+  assert.deepEqual(events.at(-1), { phase: 'pin', ref })
+
+  // 换到另一枚胶囊：旧的那条是 switch，不是用户主动关闭
+  __internals.pinPreview(other, otherBody)
+  assert.deepEqual(events.at(-2), { phase: 'unpin', ref, reason: 'switch' })
+  assert.deepEqual(events.at(-1), { phase: 'pin', ref: other })
+
+  // ✕ 关闭 → close（联动方据此取消注释）
+  __internals.unpinPreview('close')
+  assert.deepEqual(events.at(-1), { phase: 'unpin', ref: other, reason: 'close' })
+
+  // Esc / 点外部 → dismiss（不得被当成主动关闭）
+  __internals.pinPreview(ref, body)
+  __internals.unpinPreview()
+  assert.deepEqual(events.at(-1), { phase: 'unpin', ref, reason: 'dismiss' })
+
+  // closePreview：只收指定胶囊，且播 removed
+  __internals.pinPreview(ref, body)
+  assert.equal(ctx.pasteChip.closePreview('c-other'), false, '不是当前预览的 ref 就不动')
+  assert.equal(ctx.pasteChip.closePreview(ref), true)
+  assert.deepEqual(events.at(-1), { phase: 'unpin', ref, reason: 'removed' })
+
+  // 取消订阅后不再收到
+  off()
+  const settled = events.length
+  __internals.pinPreview(ref, body)
+  __internals.unpinPreview('close')
+  assert.equal(events.length, settled, '取消订阅后不应再回调')
 })
 
 /* ------------------------------------------------------------------ *

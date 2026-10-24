@@ -105,6 +105,31 @@ const result = ctx.pasteChip.insert(body, { sessionId, span, label: '注释 · 3
 
 服务版本：`ctx.pasteChip.version`。
 
+### 预览开关的事件（v0.1.22）
+
+常驻预览是谁打开的、谁关心它被关掉，插件自己不知道。所以给一个订阅口：
+
+```js
+const off = ctx.get('pasteChip').watchPreview((event) => {
+  // { phase: 'pin',   ref }
+  // { phase: 'unpin', ref, reason: 'close' | 'dismiss' | 'switch' | 'removed' }
+})
+```
+
+`reason` 是这套 API 的全部价值，别混用：
+
+| reason | 什么动作 | 联动方一般该做什么 |
+|---|---|---|
+| `close` | 点了卡片右上角的 ✕ | 这是唯一的「用户主动关闭」，可以据此取消对应动作 |
+| `dismiss` | Esc / 点浮层外部 | 收起预览而已，不要当成取消 |
+| `switch` | 点了另一枚胶囊，预览换过去 | 同上，旧的那条只是被替换 |
+| `removed` | 外部插件调了 `closePreview(ref)` | 胶囊已经没了，卡片顺手收掉 |
+
+`ctx.pasteChip.closePreview(ref)`：只收指定 ref 的常驻预览（不是当前预览就返回 `false`，不误伤别人），广播 `reason: 'removed'`。
+
+服务必须用 `ctx.get('pasteChip')` 取。cordis 上下文里直接读没在 `inject` 里声明的服务会抛
+`cannot get property ... without inject`，属性访问永远是死的。
+
 ## 非粘贴渠道
 
 标注浏览器、划词询问这类插件是用 `setDraft` / `insertText` 写草稿的，不触发 `paste`，所以另有一条通道：**比对前后两次草稿，认出「这一次新塞进来的那一段」**。
@@ -141,13 +166,15 @@ const result = ctx.pasteChip.insert(body, { sessionId, span, label: '注释 · 3
 - **胶囊外圈**：注入一段 `[data-composer-chip="paste-chip"]` 的 CSS——最大宽度 240px、超出省略、圆角、淡蓝描边，悬停时描边加深。内部图标与文字是 core 渲染的，插件只能改外层容器，不做过度覆盖。
 - **悬停浮层**：渐变深色卡片 + 8px 毛玻璃、12px 圆角、标题行（竖条 + 标签 + 字数徽标）、等宽正文、底部「仅预览前 N 字 · 发送时展开全文」，120ms 位移淡入。
 - **提示条**（超限拒绝/插入失败）：琥珀色左侧强调条，不再是裸内联样式。
+- **常驻预览的 ✕**：标题行最右侧 18px 描边圆角小按钮，收起卡片即 `unpinPreview('close')`。
+  Esc 与点外部走 `dismiss`，两者刻意分开：只有 ✕ 会被联动方当成「主动关闭」。
 
 ## 三种打开方式
 
 | 入口 | 状态 | 说明 |
 |---|---|---|
 | 悬停胶囊 | 已实现 | 停留 180ms 显示，离开 60ms 收起 |
-| **点击胶囊** | 已实现 | 常驻预览：可点「复制全文」，Esc / 点外部关闭；触屏唯一的入口 |
+| **点击胶囊** | 已实现 | 常驻预览：可点「复制全文」，右上角 ✕ / Esc / 点外部关闭；触屏唯一的入口 |
 | **工具行「粘贴 N」** | 已实现 | 键盘 Tab 可达；点开列出每条粘贴（标签 + 失效标记），点条目打开常驻预览 |
 
 点击预览走的是 `InputTriggerSource.openReference`：正文命中就接管（返回 `true`），正文已失效则返回 `false` 不抢点击。

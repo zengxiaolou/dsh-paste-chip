@@ -1,6 +1,6 @@
 {
   "name": "dsh-paste-chip",
-  "version": "0.1.21",
+  "version": "0.1.22",
   "description": "DSH 插件：长文本粘贴自动折叠成可展开的胶囊，悬停看正文与上下文，发送时按原位展开；也接管其他插件写入的长文本。",
   "type": "module",
   "exports": {
